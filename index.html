@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>動く！スタンププレビュー</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 並べ替え機能のためのライブラリ（SortableJS）を追加 -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <style>
         body {
             background-color: #748db1;
@@ -18,11 +20,15 @@
             overflow: hidden !important;
         }
         .stamp-item {
-            cursor: pointer;
+            cursor: grab; /* マウスカーソルを「掴む」手に変更 */
             transition: transform 0.2s;
             display: flex;
             justify-content: center;
             align-items: center;
+            position: relative; /* 削除ボタンの基準位置 */
+        }
+        .stamp-item:active {
+            cursor: grabbing; /* ドラッグ中は「掴んでいる」手に変更 */
         }
         .stamp-item:hover {
             transform: scale(1.05);
@@ -41,11 +47,42 @@
             gap: 16px;
             padding: 16px;
         }
+        /* 削除ボタンのスタイル */
+        .delete-btn {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            background-color: rgba(239, 68, 68, 0.9);
+            color: white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 10;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            pointer-events: auto;
+        }
+        /* マウスを乗せた時だけ削除ボタンを表示 */
+        .stamp-item:hover .delete-btn {
+            opacity: 1;
+        }
+        /* ドラッグ中の半透明スタイル */
+        .sortable-ghost {
+            opacity: 0.4;
+            transform: scale(0.95);
+        }
     </style>
 </head>
 <body>
 
-    <!-- コントロールパネル（全体を中央寄せ） -->
+    <!-- コントロールパネル -->
     <div class="bg-white p-4 shadow-md z-10 flex flex-wrap gap-4 items-center justify-center">
         
         <input type="file" id="file-input" multiple accept="image/png, image/apng, image/gif" class="text-sm">
@@ -96,6 +133,14 @@
         let loadedImages = [];
         let loopTimer = null;
 
+        // プレビューエリアにドラッグ＆ドロップ機能を適用
+        new Sortable(previewArea, {
+            animation: 150,
+            ghostClass: 'sortable-ghost',
+            delay: 100, // タッチ操作（スマホ等）とクリックの競合を避けるための遅延
+            delayOnTouchOnly: true
+        });
+
         fileInput.addEventListener('change', (e) => {
             const files = Array.from(e.target.files);
             if(files.length === 0) return;
@@ -111,11 +156,29 @@
                     
                     const div = document.createElement('div');
                     div.className = 'stamp-item';
-                    div.onclick = () => showPopup(src);
+                    
+                    // 削除ボタンの作成
+                    const delBtn = document.createElement('div');
+                    delBtn.className = 'delete-btn';
+                    delBtn.innerHTML = '✕';
+                    delBtn.onclick = (eBtn) => {
+                        eBtn.stopPropagation(); // ポップアップが開くのを防ぐ
+                        div.remove(); // 画面から削除
+                        adjustLayout(); // 削除後に残りの数で1画面フィットを自動再計算
+                    };
+
+                    div.onclick = (eDiv) => {
+                        // 削除ボタン以外の場所をクリックした時だけポップアップ
+                        if (!eDiv.target.classList.contains('delete-btn')) {
+                            showPopup(src);
+                        }
+                    };
                     
                     const img = document.createElement('img');
                     img.src = src;
+                    
                     div.appendChild(img);
+                    div.appendChild(delBtn); // ボタンを追加
                     
                     previewArea.appendChild(div);
                     
