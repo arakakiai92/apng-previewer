@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>動くスタンプ（APNG）プレビュアー</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* ポップアップ風のアニメーション */
+        .popup-animate {
+            animation: popUp 0.5s cubic-bezier(0.2, 1.3, 0.3, 1) forwards;
+        }
+        @keyframes popUp {
+            0% {
+                transform: scale(0.3);
+                opacity: 0;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        /* カスタムスクロールバー */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+
+        /* プレビューコンテナのトランジション */
+        #preview-container {
+            transition: background-color 0.3s ease;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans min-h-screen flex flex-col">
+
+    <header class="bg-white shadow-sm p-4 sticky top-0 z-10">
+        <div class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <h1 class="text-xl font-bold text-gray-900">動くスタンプ プレビュアー</h1>
+                <p class="text-sm text-gray-500">APNGファイルをドラッグ＆ドロップしてプレビュー。クリックでポップアップ！</p>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <span class="text-sm font-medium text-gray-700">背景色:</span>
+                <button class="bg-color-btn w-8 h-8 rounded-full border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 bg-white shadow-sm" data-color="white" title="白"></button>
+                <button class="bg-color-btn w-8 h-8 rounded-full border-2 border-transparent focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 bg-[#748db1] shadow-sm" data-color="#748db1" title="LINE風ブルー"></button>
+                <button class="bg-color-btn w-8 h-8 rounded-full border-2 border-transparent focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 bg-[#333333] shadow-sm" data-color="#333" title="ダークモード"></button>
+                
+                <div class="w-px h-6 bg-gray-300 mx-1 hidden sm:block"></div>
+                
+                <!-- リピート再生コントロール -->
+                <button id="replay-btn" class="px-3 py-1.5 bg-green-50 text-green-700 rounded-lg text-sm font-medium hover:bg-green-100 transition-colors flex items-center gap-1 shadow-sm">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                    再生
+                </button>
+                <label class="flex items-center gap-1 text-sm text-gray-700 cursor-pointer bg-white px-2 py-1.5 rounded-lg border border-gray-200 shadow-sm hover:bg-gray-50 transition-colors">
+                    <input type="checkbox" id="auto-replay-toggle" class="rounded text-blue-600 focus:ring-blue-500">
+                    <span class="whitespace-nowrap">自動ループ</span>
+                </label>
+
+                <div class="w-px h-6 bg-gray-300 mx-1 hidden sm:block"></div>
+                
+                <button id="clear-btn" class="px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors">
+                    クリア
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow p-4 max-w-6xl mx-auto w-full flex flex-col">
+        
+        <!-- ドラッグ＆ドロップゾーン -->
+        <div id="drop-zone" class="border-2 border-dashed border-gray-400 rounded-xl p-8 mb-6 bg-white bg-opacity-50 flex flex-col items-center justify-center text-center transition-all duration-200 hover:bg-blue-50 hover:border-blue-400 cursor-pointer">
+            <svg class="w-12 h-12 text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+            </svg>
+            <p class="text-lg font-medium text-gray-700">APNGファイルをここにドラッグ＆ドロップ</p>
+            <p class="text-sm text-gray-500 mt-1 mb-4">または、クリックしてファイルを選択（複数選択可）</p>
+            <input type="file" id="file-input" multiple accept="image/png, image/apng, image/gif, image/webp" class="hidden">
+            <button class="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors shadow-sm pointer-events-none">
+                ファイルを選択
+            </button>
+        </div>
+
+        <!-- プレビュー表示エリア -->
+        <div class="flex-grow bg-white rounded-xl shadow-inner overflow-hidden border border-gray-200">
+            <!-- 動的に背景色が変わるコンテナ (初期色をLINE風ブルーに) -->
+            <div id="preview-container" class="w-full h-full min-h-[400px] p-6 bg-[#748db1] transition-colors duration-300">
+                <!-- 初期表示メッセージ -->
+                <div id="empty-state" class="w-full h-full flex items-center justify-center text-white font-medium drop-shadow-md">
+                    プレビュー画像がここに表示されます
+                </div>
+                
+                <!-- 常に4列グリッド、下へ伸びる -->
+                <div id="grid-layout" class="hidden grid grid-cols-4 gap-2 md:gap-4 pb-20 items-end">
+                    <!-- 画像アイテムがここに追加されます -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ポップアップ表示用モーダル -->
+    <div id="modal" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300 backdrop-blur-sm cursor-pointer">
+        <!-- 閉じるボタン（右上のバツ印、見た目のため配置） -->
+        <button class="absolute top-4 right-4 text-white hover:text-gray-300 focus:outline-none p-2">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </button>
+        
+        <!-- モーダル内の画像 -->
+        <!-- ポップアップスタンプ感を出すために大きめに表示 -->
+        <img id="modal-image" src="" alt="Popup Preview" class="max-w-[90vw] max-h-[85vh] object-contain drop-shadow-2xl">
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const dropZone = document.getElementById('drop-zone');
+            const fileInput = document.getElementById('file-input');
+            const previewContainer = document.getElementById('preview-container');
+            const gridLayout = document.getElementById('grid-layout');
+            const emptyState = document.getElementById('empty-state');
+            const clearBtn = document.getElementById('clear-btn');
+            
+            const replayBtn = document.getElementById('replay-btn');
+            const autoReplayToggle = document.getElementById('auto-replay-toggle');
+
+            const modal = document.getElementById('modal');
+            const modalImage = document.getElementById('modal-image');
+            const colorBtns = document.querySelectorAll('.bg-color-btn');
+
+            let objectUrls = []; // メモリ解放用
+            let autoReplayInterval = null;
+
+            // --- UI Interactions ---
+
+            // 初期状態のボタン選択スタイリング
+            colorBtns.forEach(b => b.classList.remove('ring-2', 'ring-offset-1', 'ring-blue-400', 'border-gray-500'));
+            document.querySelector('[data-color="#748db1"]').classList.add('ring-2', 'ring-offset-1', 'ring-blue-400');
+
+            // 背景色切り替え
+            colorBtns.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const color = e.target.dataset.color;
+                    previewContainer.style.backgroundColor = color;
+                    
+                    // 選択状態のスタイリング
+                    colorBtns.forEach(b => b.classList.remove('border-gray-500', 'ring-2', 'ring-offset-1', 'ring-blue-400'));
+                    e.target.classList.add('ring-2', 'ring-offset-1', 'ring-blue-400');
+                    if (color === 'white') e.target.classList.add('border-gray-500');
+                });
+            });
+
+            // ドラッグ＆ドロップイベント
+            dropZone.addEventListener('click', () => fileInput.click());
+
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.classList.add('bg-blue-50', 'border-blue-500');
+            });
+
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.classList.remove('bg-blue-50', 'border-blue-500');
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('bg-blue-50', 'border-blue-500');
+                if (e.dataTransfer.files.length > 0) {
+                    handleFiles(e.dataTransfer.files);
+                }
+            });
+
+            // ファイル選択イベント
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    handleFiles(e.target.files);
+                }
+                // 同じファイルを選択し直せるようにリセット
+                fileInput.value = '';
+            });
+
+            // クリアボタン
+            clearBtn.addEventListener('click', () => {
+                gridLayout.innerHTML = '';
+                gridLayout.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                
+                // メモリ解放
+                objectUrls.forEach(url => URL.revokeObjectURL(url));
+                objectUrls = [];
+            });
+
+            // リピート再生機能 (手動/自動)
+            function replayAnimations() {
+                const images = document.querySelectorAll('.stamp-img');
+                images.forEach(img => {
+                    const currentSrc = img.src;
+                    img.src = '';
+                    // わずかな遅延を挟むことでブラウザに画像変更を認識させ、アニメーションを最初から再開させる
+                    setTimeout(() => {
+                        img.src = currentSrc;
+                    }, 20);
+                });
+            }
+
+            replayBtn.addEventListener('click', replayAnimations);
+
+            autoReplayToggle.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    // ポップアップスタンプの一般的な長さ(約4秒)に合わせてリロード
+                    autoReplayInterval = setInterval(replayAnimations, 4000);
+                    replayAnimations(); // チェックした瞬間に一度再生
+                } else {
+                    clearInterval(autoReplayInterval);
+                }
+            });
+
+            // --- File Handling & Rendering ---
+
+            function handleFiles(files) {
+                const imageFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
+                
+                if (imageFiles.length === 0) return;
+
+                emptyState.classList.add('hidden');
+                gridLayout.classList.remove('hidden');
+
+                // ドロップゾーンを少し小さくしてプレビュー領域を広げる
+                dropZone.classList.add('py-4');
+                dropZone.classList.remove('p-8', 'mb-6');
+                dropZone.classList.add('mb-4');
+                dropZone.querySelector('svg').classList.add('hidden');
+                dropZone.querySelector('.text-lg').classList.replace('text-lg', 'text-base');
+                dropZone.querySelector('p:nth-child(3)').classList.add('hidden');
+
+                imageFiles.forEach(file => {
+                    const url = URL.createObjectURL(file);
+                    objectUrls.push(url);
+                    createPreviewItem(url, file.name);
+                });
+            }
+
+            function createPreviewItem(url, filename) {
+                // スタンプコンテナ (下に伸びて整列するように items-end を指定)
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'relative group cursor-pointer aspect-square flex items-end justify-center p-1 md:p-2 rounded-lg hover:bg-white/20 transition-colors';
+                
+                // 画像要素 (stamp-imgクラスを追加して一括再生の対象にする)
+                const img = document.createElement('img');
+                img.src = url;
+                img.alt = filename;
+                img.className = 'stamp-img max-w-full max-h-full object-contain filter drop-shadow-md group-hover:drop-shadow-xl transition-all duration-200 transform group-hover:scale-105';
+                
+                // ホバー時の「ポップアップ」アイコン表示
+                const hoverOverlay = document.createElement('div');
+                hoverOverlay.className = 'absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center';
+                hoverOverlay.innerHTML = `
+                    <div class="bg-black/60 text-white rounded-full p-2 backdrop-blur-sm shadow-lg">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>
+                        </svg>
+                    </div>
+                `;
+
+                // クリックでポップアップ表示
+                itemDiv.addEventListener('click', () => showModal(url));
+
+                itemDiv.appendChild(img);
+                itemDiv.appendChild(hoverOverlay);
+                gridLayout.appendChild(itemDiv);
+            }
+
+            // --- Modal Logic ---
+
+            function showModal(imgSrc) {
+                // srcを空にして再設定することで、ポップアップ時にもアニメーションを最初から確実に再生する
+                modalImage.src = '';
+                
+                setTimeout(() => {
+                    modalImage.src = imgSrc;
+                    
+                    // アニメーションクラスをリセットして再適用
+                    modalImage.classList.remove('popup-animate');
+                    // ブラウザのレンダリングサイクルを強制的に更新
+                    void modalImage.offsetWidth; 
+                    modalImage.classList.add('popup-animate');
+
+                    modal.classList.remove('hidden');
+                    // 少し遅延させてopacityを上げる（Tailwindのtransitionを効かせるため）
+                    setTimeout(() => {
+                        modal.classList.remove('opacity-0');
+                        modal.classList.add('opacity-100');
+                    }, 10);
+                }, 20);
+            }
+
+            function hideModal() {
+                modal.classList.remove('opacity-100');
+                modal.classList.add('opacity-0');
+                
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                    modalImage.src = '';
+                    modalImage.classList.remove('popup-animate');
+                }, 300); // Tailwindのduration-300と合わせる
+            }
+
+            // モーダル全体（黒背景部分）クリックで閉じる
+            modal.addEventListener('click', hideModal);
+
+            // ESCキーでも閉じる
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+                    hideModal();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
