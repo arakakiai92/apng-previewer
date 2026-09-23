@@ -33,10 +33,9 @@
             object-fit: contain;
             pointer-events: none;
         }
-        /* 横4列固定・中央寄せの等間隔グリッド */
         #preview-area {
             display: grid;
-            grid-template-columns: repeat(4, max-content);
+            grid-template-columns: repeat(4, auto);
             justify-content: center;
             align-content: center;
             gap: 16px;
@@ -46,8 +45,8 @@
 </head>
 <body>
 
-    <!-- コントロールパネル（左寄せでコンパクトにまとめる） -->
-    <div class="bg-white p-4 shadow-md z-10 flex flex-wrap gap-4 items-center justify-start">
+    <!-- コントロールパネル（全体を中央寄せ） -->
+    <div class="bg-white p-4 shadow-md z-10 flex flex-wrap gap-4 items-center justify-center">
         
         <input type="file" id="file-input" multiple accept="image/png, image/apng, image/gif" class="text-sm">
         
@@ -63,7 +62,6 @@
             <span class="text-sm font-bold ml-1">秒</span>
         </div>
 
-        <!-- 区切り線 -->
         <div class="border-l-2 border-gray-300 h-6 mx-2 hidden sm:block"></div>
 
         <label class="flex items-center gap-2 text-sm font-bold cursor-pointer text-green-700">
@@ -81,7 +79,7 @@
         <!-- ここにスタンプが追加されます -->
     </div>
 
-    <!-- ポップアップ（拡大表示）用オーバーレイ -->
+    <!-- ポップアップ用オーバーレイ -->
     <div id="popup-overlay" class="fixed inset-0 bg-black/60 hidden z-50 flex justify-center items-center cursor-pointer" onclick="closePopup()">
         <img id="popup-img" src="" alt="Popup" class="w-[300px] h-[300px] object-contain drop-shadow-2xl">
     </div>
