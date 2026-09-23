@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
-            background-color: #748db1; /* LINEのトーク背景色 */
+            background-color: #748db1;
             font-family: sans-serif;
             margin: 0;
             height: 100vh;
@@ -33,19 +33,19 @@
             object-fit: contain;
             pointer-events: none;
         }
-        /* 横4列固定用のグリッドレイアウト設定 */
+        /* 横4列固定・中央寄せの等間隔グリッド */
         #preview-area {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 8px; /* スタンプ間の隙間 */
-            align-content: start; /* 上詰めで配置 */
-            justify-items: center; /* 各セルの中央に配置 */
+            grid-template-columns: repeat(4, max-content); /* アイテムサイズにぴったり合わせる */
+            justify-content: center; /* グリッド全体を中央寄せ */
+            align-content: center; /* 縦方向も中央寄せにして見やすく */
+            gap: 16px; /* スタンプ間の隙間（固定） */
+            padding: 16px;
         }
     </style>
 </head>
 <body>
 
-    <!-- コントロールパネル -->
     <div class="bg-white p-4 shadow-md z-10 flex flex-wrap gap-4 items-center justify-between">
         <div class="flex items-center gap-4">
             <input type="file" id="file-input" multiple accept="image/png, image/apng, image/gif" class="text-sm">
@@ -75,12 +75,10 @@
         </div>
     </div>
 
-    <!-- スタンプ表示エリア -->
-    <div id="preview-area" class="flex-1 p-4 overflow-auto no-scroll">
+    <div id="preview-area" class="flex-1 overflow-auto no-scroll">
         <!-- ここにスタンプが追加されます -->
     </div>
 
-    <!-- ポップアップ（拡大表示）用オーバーレイ -->
     <div id="popup-overlay" class="fixed inset-0 bg-black/60 hidden z-50 flex justify-center items-center cursor-pointer" onclick="closePopup()">
         <img id="popup-img" src="" alt="Popup" class="w-[300px] h-[300px] object-contain drop-shadow-2xl">
     </div>
@@ -97,7 +95,6 @@
         let loadedImages = [];
         let loopTimer = null;
 
-        // 画像の読み込み
         fileInput.addEventListener('change', (e) => {
             const files = Array.from(e.target.files);
             if(files.length === 0) return;
@@ -130,7 +127,6 @@
             });
         });
 
-        // 1画面フィット機能のオンオフ
         fitScreenCb.addEventListener('change', (e) => {
             if(e.target.checked) {
                 previewArea.classList.add('no-scroll');
@@ -142,28 +138,27 @@
             adjustLayout();
         });
 
-        // スライダーの手動調整
         sizeSlider.addEventListener('input', () => {
             if(!fitScreenCb.checked) adjustLayout();
         });
 
         window.addEventListener('resize', adjustLayout);
 
-        // レイアウト計算（4列固定）
         function adjustLayout() {
             const items = document.querySelectorAll('.stamp-item');
             if (items.length === 0) return;
 
-            const cols = 4; // 列数を4に固定
+            const cols = 4; 
+            const gap = 16; // CSSのgapと同じ値
 
             if (fitScreenCb.checked) {
-                const W = previewArea.clientWidth - 32; // エリアの幅（padding分を引く）
-                const H = previewArea.clientHeight - 32; // エリアの高さ（padding分を引く）
-                const rows = Math.ceil(items.length / cols); // 必要な行数
+                const W = previewArea.clientWidth - 32; 
+                const H = previewArea.clientHeight - 32; 
+                const rows = Math.ceil(items.length / cols); 
 
-                // 4列に並べたときに、幅と高さの両方が画面に収まる最大サイズを計算
-                let w = (W - (cols - 1) * 8) / cols;
-                let h = (H - (rows - 1) * 8) / rows;
+                // 隙間（gap）を考慮して最大サイズを算出
+                let w = (W - (cols - 1) * gap) / cols;
+                let h = (H - (rows - 1) * gap) / rows;
                 let maxSize = Math.min(w, h);
 
                 items.forEach(item => {
@@ -171,7 +166,6 @@
                     item.style.height = Math.floor(maxSize) + 'px';
                 });
             } else {
-                // スライダーの手動サイズを適用
                 const manualSize = sizeSlider.value;
                 items.forEach(item => {
                     item.style.width = manualSize + 'px';
@@ -180,7 +174,6 @@
             }
         }
 
-        // 一斉再生
         function replayAll() {
             const imgs = document.querySelectorAll('.stamp-item img');
             imgs.forEach(img => {
@@ -190,7 +183,6 @@
             });
         }
 
-        // ループ制御
         function startLoop() {
             if (loopTimer) clearInterval(loopTimer);
             let sec = parseFloat(loopIntervalInput.value);
@@ -203,7 +195,6 @@
             loopTimer = null;
         }
 
-        // 自動ループのオンオフ切り替え
         autoLoopCb.addEventListener('change', (e) => {
             if (e.target.checked) {
                 startLoop();
@@ -218,7 +209,6 @@
             }
         });
 
-        // クリックで拡大表示
         function showPopup(src) {
             const overlay = document.getElementById('popup-overlay');
             const popupImg = document.getElementById('popup-img');
