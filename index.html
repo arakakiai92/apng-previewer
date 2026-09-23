@@ -32,7 +32,7 @@
             max-width: 100%;
             max-height: 100%;
             object-fit: contain;
-            pointer-events: none; /* 画像自体のクリックイベントを防ぐ */
+            pointer-events: none;
         }
     </style>
 </head>
@@ -47,18 +47,22 @@
                 ▶ 一斉再生
             </button>
             
-            <label class="flex items-center gap-2 text-sm font-bold cursor-pointer">
-                <input type="checkbox" id="auto-loop" class="w-4 h-4"> 自動ループ(4秒)
-            </label>
+            <div class="flex items-center bg-gray-100 px-3 py-1 rounded">
+                <label class="flex items-center gap-1 text-sm font-bold cursor-pointer mr-2">
+                    <input type="checkbox" id="auto-loop" class="w-4 h-4"> 自動ループ
+                </label>
+                <input type="number" id="loop-interval" value="4.0" step="0.1" min="0.5" max="10.0" class="w-16 border rounded text-center text-sm font-bold py-1">
+                <span class="text-sm font-bold ml-1">秒</span>
+            </div>
         </div>
 
-        <div class="flex items-center gap-4 border-l pl-4">
+        <div class="flex items-center gap-4 border-l pl-4 border-gray-300">
             <label class="flex items-center gap-2 text-sm font-bold cursor-pointer text-green-700">
                 <input type="checkbox" id="fit-screen" checked class="w-4 h-4"> 1画面に収める
             </label>
             
             <div id="slider-container" class="flex items-center gap-2 opacity-50 pointer-events-none transition-opacity">
-                <span class="text-sm">サイズ:</span>
+                <span class="text-sm font-bold">サイズ:</span>
                 <input type="range" id="size-slider" min="50" max="300" value="120" class="w-24">
             </div>
         </div>
@@ -80,9 +84,11 @@
         const fitScreenCb = document.getElementById('fit-screen');
         const sizeSlider = document.getElementById('size-slider');
         const sliderContainer = document.getElementById('slider-container');
+        const autoLoopCb = document.getElementById('auto-loop');
+        const loopIntervalInput = document.getElementById('loop-interval');
         
         let loadedImages = [];
-        let loopInterval = null;
+        let loopTimer = null;
 
         // 画像の読み込み
         fileInput.addEventListener('change', (e) => {
@@ -108,9 +114,10 @@
                     
                     previewArea.appendChild(div);
                     
-                    // すべて読み込み終わったらリサイズ処理
                     if(loadedImages.length === files.length){
                         adjustLayout();
+                        // 画像読み込み時に自動ループがオンなら再起動
+                        if(autoLoopCb.checked) startLoop();
                     }
                 };
                 reader.readAsDataURL(file);
@@ -134,17 +141,15 @@
             if(!fitScreenCb.checked) adjustLayout();
         });
 
-        // ウィンドウのサイズが変わった時も再計算
         window.addEventListener('resize', adjustLayout);
 
-        // レイアウトの計算と適用
+        // レイアウト計算
         function adjustLayout() {
             const items = document.querySelectorAll('.stamp-item');
             if (items.length === 0) return;
 
             if (fitScreenCb.checked) {
-                // 1画面に収めるための最大サイズを計算 (ギャップ8pxを考慮)
-                const W = previewArea.clientWidth - 32; // 余白分
+                const W = previewArea.clientWidth - 32;
                 const H = previewArea.clientHeight - 32;
                 const count = items.length;
                 let maxSize = 0;
@@ -162,7 +167,6 @@
                     item.style.height = Math.floor(maxSize) + 'px';
                 });
             } else {
-                // スライダーの指定サイズを適用
                 const manualSize = sizeSlider.value;
                 items.forEach(item => {
                     item.style.width = manualSize + 'px';
@@ -171,7 +175,7 @@
             }
         }
 
-        // 一斉再生（APNGの再読み込みで最初から動かす）
+        // 一斉再生
         function replayAll() {
             const imgs = document.querySelectorAll('.stamp-item img');
             imgs.forEach(img => {
@@ -181,20 +185,40 @@
             });
         }
 
-        // 自動ループ機能
-        document.getElementById('auto-loop').addEventListener('change', (e) => {
+        // ループ制御
+        function startLoop() {
+            if (loopTimer) clearInterval(loopTimer);
+            let sec = parseFloat(loopIntervalInput.value);
+            if (isNaN(sec) || sec <= 0) sec = 4.0;
+            loopTimer = setInterval(replayAll, sec * 1000);
+        }
+
+        function stopLoop() {
+            if (loopTimer) clearInterval(loopTimer);
+            loopTimer = null;
+        }
+
+        // 自動ループのオンオフ切り替え
+        autoLoopCb.addEventListener('change', (e) => {
             if (e.target.checked) {
-                loopInterval = setInterval(replayAll, 4000); // 4秒間隔
+                startLoop();
             } else {
-                clearInterval(loopInterval);
+                stopLoop();
             }
         });
 
-        // クリックで拡大表示（ポップアップ）
+        // 秒数を変更したときに即座に反映させる
+        loopIntervalInput.addEventListener('change', () => {
+            if (autoLoopCb.checked) {
+                startLoop();
+            }
+        });
+
+        // クリックで拡大表示
         function showPopup(src) {
             const overlay = document.getElementById('popup-overlay');
             const popupImg = document.getElementById('popup-img');
-            popupImg.src = ''; // 一度空にしてAPNGを最初から再生
+            popupImg.src = ''; 
             setTimeout(() => { popupImg.src = src; }, 10);
             overlay.classList.remove('hidden');
             overlay.classList.add('flex');
