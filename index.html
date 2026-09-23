@@ -36,49 +36,52 @@
         /* 横4列固定・中央寄せの等間隔グリッド */
         #preview-area {
             display: grid;
-            grid-template-columns: repeat(4, max-content); /* アイテムサイズにぴったり合わせる */
-            justify-content: center; /* グリッド全体を中央寄せ */
-            align-content: center; /* 縦方向も中央寄せにして見やすく */
-            gap: 16px; /* スタンプ間の隙間（固定） */
+            grid-template-columns: repeat(4, max-content);
+            justify-content: center;
+            align-content: center;
+            gap: 16px;
             padding: 16px;
         }
     </style>
 </head>
 <body>
 
-    <div class="bg-white p-4 shadow-md z-10 flex flex-wrap gap-4 items-center justify-between">
-        <div class="flex items-center gap-4">
-            <input type="file" id="file-input" multiple accept="image/png, image/apng, image/gif" class="text-sm">
-            
-            <button onclick="replayAll()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold shadow">
-                ▶ 一斉再生
-            </button>
-            
-            <div class="flex items-center bg-gray-100 px-3 py-1 rounded">
-                <label class="flex items-center gap-1 text-sm font-bold cursor-pointer mr-2">
-                    <input type="checkbox" id="auto-loop" class="w-4 h-4"> 自動ループ
-                </label>
-                <input type="number" id="loop-interval" value="4.0" step="0.1" min="0.5" max="10.0" class="w-16 border rounded text-center text-sm font-bold py-1">
-                <span class="text-sm font-bold ml-1">秒</span>
-            </div>
+    <!-- コントロールパネル（左寄せでコンパクトにまとめる） -->
+    <div class="bg-white p-4 shadow-md z-10 flex flex-wrap gap-4 items-center justify-start">
+        
+        <input type="file" id="file-input" multiple accept="image/png, image/apng, image/gif" class="text-sm">
+        
+        <button onclick="replayAll()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold shadow">
+            ▶ 一斉再生
+        </button>
+        
+        <div class="flex items-center bg-gray-100 px-3 py-1 rounded">
+            <label class="flex items-center gap-1 text-sm font-bold cursor-pointer mr-2">
+                <input type="checkbox" id="auto-loop" class="w-4 h-4"> 自動ループ
+            </label>
+            <input type="number" id="loop-interval" value="4.0" step="0.1" min="0.5" max="10.0" class="w-16 border rounded text-center text-sm font-bold py-1">
+            <span class="text-sm font-bold ml-1">秒</span>
         </div>
 
-        <div class="flex items-center gap-4 border-l pl-4 border-gray-300">
-            <label class="flex items-center gap-2 text-sm font-bold cursor-pointer text-green-700">
-                <input type="checkbox" id="fit-screen" checked class="w-4 h-4"> 1画面に収める(4列)
-            </label>
-            
-            <div id="slider-container" class="flex items-center gap-2 opacity-50 pointer-events-none transition-opacity">
-                <span class="text-sm font-bold">サイズ:</span>
-                <input type="range" id="size-slider" min="50" max="300" value="120" class="w-24">
-            </div>
+        <!-- 区切り線 -->
+        <div class="border-l-2 border-gray-300 h-6 mx-2 hidden sm:block"></div>
+
+        <label class="flex items-center gap-2 text-sm font-bold cursor-pointer text-green-700">
+            <input type="checkbox" id="fit-screen" checked class="w-4 h-4"> 1画面に収める(4列)
+        </label>
+        
+        <div id="slider-container" class="flex items-center gap-2 opacity-50 pointer-events-none transition-opacity">
+            <span class="text-sm font-bold">サイズ:</span>
+            <input type="range" id="size-slider" min="50" max="300" value="120" class="w-24">
         </div>
     </div>
 
+    <!-- スタンプ表示エリア -->
     <div id="preview-area" class="flex-1 overflow-auto no-scroll">
         <!-- ここにスタンプが追加されます -->
     </div>
 
+    <!-- ポップアップ（拡大表示）用オーバーレイ -->
     <div id="popup-overlay" class="fixed inset-0 bg-black/60 hidden z-50 flex justify-center items-center cursor-pointer" onclick="closePopup()">
         <img id="popup-img" src="" alt="Popup" class="w-[300px] h-[300px] object-contain drop-shadow-2xl">
     </div>
@@ -149,14 +152,13 @@
             if (items.length === 0) return;
 
             const cols = 4; 
-            const gap = 16; // CSSのgapと同じ値
+            const gap = 16; 
 
             if (fitScreenCb.checked) {
                 const W = previewArea.clientWidth - 32; 
                 const H = previewArea.clientHeight - 32; 
                 const rows = Math.ceil(items.length / cols); 
 
-                // 隙間（gap）を考慮して最大サイズを算出
                 let w = (W - (cols - 1) * gap) / cols;
                 let h = (H - (rows - 1) * gap) / rows;
                 let maxSize = Math.min(w, h);
