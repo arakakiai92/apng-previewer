@@ -14,7 +14,6 @@
             display: flex;
             flex-direction: column;
         }
-        /* スクロールバーの非表示（1画面フィット時） */
         .no-scroll {
             overflow: hidden !important;
         }
@@ -33,6 +32,14 @@
             max-height: 100%;
             object-fit: contain;
             pointer-events: none;
+        }
+        /* 横4列固定用のグリッドレイアウト設定 */
+        #preview-area {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px; /* スタンプ間の隙間 */
+            align-content: start; /* 上詰めで配置 */
+            justify-items: center; /* 各セルの中央に配置 */
         }
     </style>
 </head>
@@ -58,7 +65,7 @@
 
         <div class="flex items-center gap-4 border-l pl-4 border-gray-300">
             <label class="flex items-center gap-2 text-sm font-bold cursor-pointer text-green-700">
-                <input type="checkbox" id="fit-screen" checked class="w-4 h-4"> 1画面に収める
+                <input type="checkbox" id="fit-screen" checked class="w-4 h-4"> 1画面に収める(4列)
             </label>
             
             <div id="slider-container" class="flex items-center gap-2 opacity-50 pointer-events-none transition-opacity">
@@ -69,7 +76,7 @@
     </div>
 
     <!-- スタンプ表示エリア -->
-    <div id="preview-area" class="flex-1 p-4 overflow-auto flex flex-wrap content-start justify-center gap-2 no-scroll">
+    <div id="preview-area" class="flex-1 p-4 overflow-auto no-scroll">
         <!-- ここにスタンプが追加されます -->
     </div>
 
@@ -116,7 +123,6 @@
                     
                     if(loadedImages.length === files.length){
                         adjustLayout();
-                        // 画像読み込み時に自動ループがオンなら再起動
                         if(autoLoopCb.checked) startLoop();
                     }
                 };
@@ -143,30 +149,29 @@
 
         window.addEventListener('resize', adjustLayout);
 
-        // レイアウト計算
+        // レイアウト計算（4列固定）
         function adjustLayout() {
             const items = document.querySelectorAll('.stamp-item');
             if (items.length === 0) return;
 
-            if (fitScreenCb.checked) {
-                const W = previewArea.clientWidth - 32;
-                const H = previewArea.clientHeight - 32;
-                const count = items.length;
-                let maxSize = 0;
+            const cols = 4; // 列数を4に固定
 
-                for (let cols = 1; cols <= count; cols++) {
-                    let rows = Math.ceil(count / cols);
-                    let w = (W - (cols - 1) * 8) / cols;
-                    let h = (H - (rows - 1) * 8) / rows;
-                    let size = Math.min(w, h);
-                    if (size > maxSize) maxSize = size;
-                }
-                
+            if (fitScreenCb.checked) {
+                const W = previewArea.clientWidth - 32; // エリアの幅（padding分を引く）
+                const H = previewArea.clientHeight - 32; // エリアの高さ（padding分を引く）
+                const rows = Math.ceil(items.length / cols); // 必要な行数
+
+                // 4列に並べたときに、幅と高さの両方が画面に収まる最大サイズを計算
+                let w = (W - (cols - 1) * 8) / cols;
+                let h = (H - (rows - 1) * 8) / rows;
+                let maxSize = Math.min(w, h);
+
                 items.forEach(item => {
                     item.style.width = Math.floor(maxSize) + 'px';
                     item.style.height = Math.floor(maxSize) + 'px';
                 });
             } else {
+                // スライダーの手動サイズを適用
                 const manualSize = sizeSlider.value;
                 items.forEach(item => {
                     item.style.width = manualSize + 'px';
@@ -207,7 +212,6 @@
             }
         });
 
-        // 秒数を変更したときに即座に反映させる
         loopIntervalInput.addEventListener('change', () => {
             if (autoLoopCb.checked) {
                 startLoop();
@@ -224,7 +228,6 @@
             overlay.classList.add('flex');
         }
 
-        // 拡大表示を閉じる
         function closePopup() {
             const overlay = document.getElementById('popup-overlay');
             overlay.classList.add('hidden');
